@@ -172,10 +172,43 @@ streamlit run dashboard/app.py
 
 ---
 
+## ▶️ Uso local
+
+### Ejecutar la API
+
+Desde la raiz del proyecto:
+
+```bash
+uvicorn app.main:app --reload
+```
+
+La API queda disponible en `http://localhost:8000` y la documentacion interactiva en `http://localhost:8000/docs`.
+
+### Ejecutar el dashboard
+
+El dashboard usa Streamlit y lee las ofertas guardadas en la base de datos configurada por `DATABASE_URL`.
+
+```bash
+streamlit run dashboard/app.py
+```
+
+### Ejecutar los tests
+
+Los tests usan `pytest` y `TestClient` de FastAPI. Los tests de scrapers evitan llamadas reales a servicios externos usando datos simulados o mocks.
+
+```bash
+pytest
+```
+
+<br/>
+
+---
+
 ## 📡 API Endpoints
 
 ```
 GET    /ofertas              → Lista de ofertas con filtros
+POST   /ofertas              → Crea una oferta
 GET    /ofertas/{id}         → Detalle de una oferta
 PATCH  /ofertas/{id}/estado  → Actualiza estado (aplicado / guardado / descartado)
 POST   /alertas              → Crea una alerta personalizada
