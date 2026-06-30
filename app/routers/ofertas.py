@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from ..database import get_db
 from .. import models, schemas
+from ..deps import get_current_user
 
 router = APIRouter(
     prefix="/ofertas",
@@ -15,7 +16,8 @@ def read_ofertas(
     empresa: Optional[str] = None,
     ubicacion: Optional[str] = None,
     estado: Optional[str] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
 ):
     query = db.query(models.Oferta)
     
@@ -34,14 +36,22 @@ def read_ofertas(
     return query.all()
 
 @router.get("/{oferta_id}", response_model=schemas.Oferta)
-def read_oferta(oferta_id: int, db: Session = Depends(get_db)):
+def read_oferta(
+    oferta_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
     db_oferta = db.query(models.Oferta).filter(models.Oferta.id == oferta_id).first()
     if not db_oferta:
         raise HTTPException(status_code=404, detail="Oferta no encontrada")
     return db_oferta
 
 @router.post("/", response_model=schemas.Oferta, status_code=status.HTTP_201_CREATED)
-def create_oferta(oferta: schemas.OfertaCreate, db: Session = Depends(get_db)):
+def create_oferta(
+    oferta: schemas.OfertaCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
     # Check if duplicate url
     db_existing = db.query(models.Oferta).filter(models.Oferta.enlace == oferta.enlace).first()
     if db_existing:
@@ -60,7 +70,8 @@ def create_oferta(oferta: schemas.OfertaCreate, db: Session = Depends(get_db)):
 def update_oferta_estado(
     oferta_id: int, 
     estado_schema: schemas.OfertaUpdateEstado, 
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
 ):
     db_oferta = db.query(models.Oferta).filter(models.Oferta.id == oferta_id).first()
     if not db_oferta:

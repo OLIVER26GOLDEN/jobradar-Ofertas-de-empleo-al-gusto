@@ -6,6 +6,18 @@ from .database import Base
 def utc_now() -> datetime.datetime:
     return datetime.datetime.now(datetime.UTC)
 
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String, unique=True, index=True, nullable=False)
+    nombre = Column(String, nullable=True)
+    password_hash = Column(String, nullable=False)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=utc_now)
+
+
 class Oferta(Base):
     __tablename__ = "ofertas"
 

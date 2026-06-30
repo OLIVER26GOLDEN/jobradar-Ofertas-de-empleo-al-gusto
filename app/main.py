@@ -1,9 +1,10 @@
-from fastapi import FastAPI, BackgroundTasks, Query
+from fastapi import Depends, FastAPI, BackgroundTasks, Query
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Dict, Any, Iterable
 
 from .database import engine, Base, SessionLocal
-from .routers import ofertas, alertas
+from .deps import get_current_user
+from .routers import auth, ofertas, alertas
 from .scraper.infojobs import fetch_infojobs_offers
 from .scraper.indeed import fetch_indeed_offers
 from .services.telegram import send_telegram_notification
@@ -28,6 +29,7 @@ app.add_middleware(
 )
 
 # Incluir los routers
+app.include_router(auth.router)
 app.include_router(ofertas.router)
 app.include_router(alertas.router)
 
@@ -131,6 +133,7 @@ def run_sync_task(query: str = "python") -> int:
 def sync_scraper(
     background_tasks: BackgroundTasks, 
     query: str = Query("python", description="Término de búsqueda para sincronizar"),
+    current_user: models.User = Depends(get_current_user),
 ):
     """
     Sincronización manual que se ejecuta en segundo plano (Background Task)
