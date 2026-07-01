@@ -452,4 +452,4 @@ GitHub:
 
 https://github.com/Ciscojes
 
-Este proyecto evoluciono a partir de una base inicial y actualmente continua siendo desarrollado por Jesús Granados.
+Este proyecto evoluciono a partir de una base inicial y actualmente continua siendo desarrollado por Jesús Granados Y Oliver Lugo.
