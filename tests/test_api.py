@@ -12,9 +12,24 @@ from app.database import Base
 from app.main import app, read_root
 from app.deps import get_current_user
 from app.routers.auth import login_user, read_me, register_user
-from app.routers.alertas import create_alerta, delete_alerta, read_alertas
+from app.routers.alertas import (
+    activar_alerta,
+    create_alerta,
+    delete_alerta,
+    desactivar_alerta,
+    read_alerta,
+    read_alertas,
+    update_alerta,
+)
 from app.routers.ofertas import create_oferta, read_ofertas, update_oferta_estado
-from app.schemas import AlertaCreate, OfertaCreate, OfertaUpdateEstado, UserCreate, UserLogin
+from app.schemas import (
+    AlertaCreate,
+    AlertaUpdate,
+    OfertaCreate,
+    OfertaUpdateEstado,
+    UserCreate,
+    UserLogin,
+)
 
 
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
@@ -92,6 +107,8 @@ def test_rutas_protegidas_declaran_get_current_user():
         "/ofertas/{oferta_id}/estado",
         "/alertas/",
         "/alertas/{alerta_id}",
+        "/alertas/{alerta_id}/activar",
+        "/alertas/{alerta_id}/desactivar",
         "/scraper/sync",
     }
 
@@ -183,6 +200,92 @@ def test_crear_y_borrar_alerta(db_session):
 
     delete_response = delete_alerta(created_alert.id, db=db_session, current_user=current_user)
     assert delete_response is None
+
+
+def test_crud_completo_alertas(db_session):
+    current_user = models.User(email="crud-alerts@example.com", password_hash="hashed")
+    db_session.add(current_user)
+    db_session.commit()
+    db_session.refresh(current_user)
+
+    created_alert = create_alerta(
+        AlertaCreate(
+            termino="python",
+            ubicacion="Madrid",
+            categoria="Backend",
+            salario_minimo=30000,
+            modalidad="Remoto",
+            fuente="InfoJobs",
+            activo=True,
+        ),
+        db=db_session,
+        current_user=current_user,
+    )
+
+    found_alert = read_alerta(created_alert.id, db=db_session, current_user=current_user)
+    assert found_alert.id == created_alert.id
+
+    updated_alert = update_alerta(
+        created_alert.id,
+        AlertaUpdate(
+            termino="fastapi",
+            ubicacion="Barcelona",
+            categoria="API",
+            salario_minimo=35000,
+            modalidad="Hibrido",
+            fuente="Indeed",
+            activo=True,
+        ),
+        db=db_session,
+        current_user=current_user,
+    )
+    assert updated_alert.termino == "fastapi"
+    assert updated_alert.ubicacion == "Barcelona"
+    assert updated_alert.salario_minimo == 35000
+
+    disabled_alert = desactivar_alerta(
+        created_alert.id,
+        db=db_session,
+        current_user=current_user,
+    )
+    assert disabled_alert.activo is False
+
+    enabled_alert = activar_alerta(
+        created_alert.id,
+        db=db_session,
+        current_user=current_user,
+    )
+    assert enabled_alert.activo is True
+
+
+def test_usuario_no_puede_acceder_alertas_de_otro_usuario(db_session):
+    owner = models.User(email="owner-alerts@example.com", password_hash="hashed")
+    other_user = models.User(email="other-alerts@example.com", password_hash="hashed")
+    db_session.add_all([owner, other_user])
+    db_session.commit()
+    db_session.refresh(owner)
+    db_session.refresh(other_user)
+
+    created_alert = create_alerta(
+        AlertaCreate(termino="python"),
+        db=db_session,
+        current_user=owner,
+    )
+
+    with pytest.raises(Exception) as read_error:
+        read_alerta(created_alert.id, db=db_session, current_user=other_user)
+    assert read_error.value.status_code == 404
+
+    assert read_alertas(db=db_session, current_user=other_user) == []
+
+    with pytest.raises(Exception) as update_error:
+        update_alerta(
+            created_alert.id,
+            AlertaUpdate(termino="fastapi"),
+            db=db_session,
+            current_user=other_user,
+        )
+    assert update_error.value.status_code == 404
 
 
 def test_modelos_saas_basicos(db_session):

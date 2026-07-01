@@ -69,6 +69,11 @@ class AlertaBase(BaseModel):
 class AlertaCreate(AlertaBase):
     pass
 
+
+class AlertaUpdate(AlertaBase):
+    pass
+
+
 class Alerta(AlertaBase):
     id: int
     user_id: int
