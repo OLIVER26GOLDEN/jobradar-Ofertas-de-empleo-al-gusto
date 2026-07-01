@@ -434,6 +434,6 @@ Distribuido bajo licencia MIT. Consulta el archivo `LICENSE` si esta disponible 
 
 ## Autor
 
-**Jesus Grandos y Oiver Lugo**
+**Jesus Granados y Oliver Lugo**
 
 - GitHub: [Ciscojes](https://github.com/Ciscojes)
