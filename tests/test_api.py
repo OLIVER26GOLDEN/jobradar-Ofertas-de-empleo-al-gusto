@@ -7,6 +7,7 @@ from sqlalchemy.pool import StaticPool
 
 os.environ["DATABASE_URL"] = "sqlite:///:memory:"
 
+from app import models
 from app.database import Base
 from app.main import app, read_root
 from app.deps import get_current_user
@@ -161,6 +162,11 @@ def test_actualizar_estado_oferta(db_session):
 
 
 def test_crear_y_borrar_alerta(db_session):
+    current_user = models.User(email="alerts@example.com", password_hash="hashed")
+    db_session.add(current_user)
+    db_session.commit()
+    db_session.refresh(current_user)
+
     payload = AlertaCreate(**{
         "termino": "python",
         "ubicacion": "Madrid",
@@ -168,11 +174,55 @@ def test_crear_y_borrar_alerta(db_session):
         "activo": True,
     })
 
-    created_alert = create_alerta(payload, db=db_session)
+    created_alert = create_alerta(payload, db=db_session, current_user=current_user)
     assert created_alert.id is not None
+    assert created_alert.user_id == current_user.id
 
-    list_response = read_alertas(db=db_session)
+    list_response = read_alertas(db=db_session, current_user=current_user)
     assert any(alert.id == created_alert.id for alert in list_response)
 
-    delete_response = delete_alerta(created_alert.id, db=db_session)
+    delete_response = delete_alerta(created_alert.id, db=db_session, current_user=current_user)
     assert delete_response is None
+
+
+def test_modelos_saas_basicos(db_session):
+    user = models.User(email="models@example.com", password_hash="hashed")
+    db_session.add(user)
+    db_session.flush()
+
+    alert = models.Alert(
+        user_id=user.id,
+        keyword="python",
+        provincia="Madrid",
+        categoria="Tecnologia",
+        salario_minimo=30000,
+        modalidad="Remoto",
+        fuente="InfoJobs",
+    )
+    job_offer = models.JobOffer(
+        title="Python Developer",
+        company="JobRadar Labs",
+        location="Madrid",
+        salary="30000",
+        source="InfoJobs",
+        url="https://example.com/python-model",
+    )
+    db_session.add_all([alert, job_offer])
+    db_session.flush()
+
+    notification = models.NotificationLog(
+        user_id=user.id,
+        alert_id=alert.id,
+        job_offer_id=job_offer.id,
+        channel="simulated",
+        status="pending",
+        message="Notificacion simulada",
+    )
+    scraper_run = models.ScraperRun(source="InfoJobs", status="success", offers_found=1)
+    db_session.add_all([notification, scraper_run])
+    db_session.commit()
+
+    db_session.refresh(user)
+    assert user.alerts[0].keyword == "python"
+    assert notification.alert_id == alert.id
+    assert scraper_run.offers_found == 1

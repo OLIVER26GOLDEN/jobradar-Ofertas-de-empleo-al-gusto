@@ -73,9 +73,13 @@ def upgrade() -> None:
             sa.Column("user_id", sa.Integer(), nullable=False),
             sa.Column("termino", sa.String(), nullable=False),
             sa.Column("ubicacion", sa.String(), nullable=True),
+            sa.Column("categoria", sa.String(), nullable=True),
+            sa.Column("salario_minimo", sa.Integer(), nullable=True),
             sa.Column("modalidad", sa.String(), nullable=True),
+            sa.Column("fuente", sa.String(), nullable=True),
             sa.Column("activo", sa.Boolean(), nullable=True),
             sa.Column("creado_en", sa.DateTime(), nullable=True),
+            sa.Column("updated_at", sa.DateTime(), nullable=True),
             sa.ForeignKeyConstraint(["user_id"], ["users.id"]),
             sa.PrimaryKeyConstraint("id"),
         )

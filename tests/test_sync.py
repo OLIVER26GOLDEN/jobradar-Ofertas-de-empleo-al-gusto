@@ -28,8 +28,12 @@ def test_run_sync_task_guarda_ofertas_y_notifica_solo_alertas_activas(monkeypatc
 
     db = TestingSessionLocal()
     try:
+        user = models.User(email="sync@example.com", password_hash="hashed")
+        db.add(user)
+        db.flush()
         db.add(
             models.Alerta(
+                user_id=user.id,
                 termino="python",
                 ubicacion="Madrid",
                 modalidad="Remoto",

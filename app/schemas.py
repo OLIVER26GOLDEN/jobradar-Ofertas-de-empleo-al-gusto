@@ -60,7 +60,10 @@ class Oferta(OfertaBase):
 class AlertaBase(BaseModel):
     termino: str
     ubicacion: Optional[str] = "Cualquiera"
+    categoria: Optional[str] = None
+    salario_minimo: Optional[int] = None
     modalidad: Optional[str] = "Cualquiera"
+    fuente: Optional[str] = "Cualquiera"
     activo: Optional[bool] = True
 
 class AlertaCreate(AlertaBase):
@@ -68,6 +71,33 @@ class AlertaCreate(AlertaBase):
 
 class Alerta(AlertaBase):
     id: int
+    user_id: int
     creado_en: datetime
+    updated_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class NotificationLog(BaseModel):
+    id: int
+    user_id: int
+    alert_id: Optional[int] = None
+    job_offer_id: Optional[int] = None
+    channel: str
+    status: str
+    message: Optional[str] = None
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ScraperRun(BaseModel):
+    id: int
+    source: str
+    status: str
+    started_at: datetime
+    finished_at: Optional[datetime] = None
+    offers_found: int = 0
+    error_message: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)

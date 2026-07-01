@@ -29,35 +29,31 @@ def upgrade() -> None:
             "notification_logs",
             sa.Column("id", sa.Integer(), nullable=False),
             sa.Column("user_id", sa.Integer(), nullable=False),
-            sa.Column("user_oferta_id", sa.Integer(), nullable=True),
-            sa.Column("channel_id", sa.Integer(), nullable=True),
-            sa.Column("channel_type", sa.String(), nullable=False),
-            sa.Column("destination", sa.String(), nullable=False),
+            sa.Column("alert_id", sa.Integer(), nullable=True),
+            sa.Column("job_offer_id", sa.Integer(), nullable=True),
+            sa.Column("channel", sa.String(), nullable=False),
             sa.Column("status", sa.String(), nullable=False),
-            sa.Column("error_message", sa.Text(), nullable=True),
-            sa.Column("sent_at", sa.DateTime(), nullable=True),
+            sa.Column("message", sa.Text(), nullable=True),
             sa.Column("created_at", sa.DateTime(), nullable=True),
-            sa.ForeignKeyConstraint(["channel_id"], ["notification_channels.id"]),
+            sa.ForeignKeyConstraint(["alert_id"], ["alertas.id"]),
+            sa.ForeignKeyConstraint(["job_offer_id"], ["ofertas.id"]),
             sa.ForeignKeyConstraint(["user_id"], ["users.id"]),
-            sa.ForeignKeyConstraint(["user_oferta_id"], ["user_ofertas.id"]),
             sa.PrimaryKeyConstraint("id"),
         )
         op.create_index(op.f("ix_notification_logs_id"), "notification_logs", ["id"], unique=False)
         op.create_index(op.f("ix_notification_logs_user_id"), "notification_logs", ["user_id"], unique=False)
-        op.create_index(op.f("ix_notification_logs_user_oferta_id"), "notification_logs", ["user_oferta_id"], unique=False)
-        op.create_index(op.f("ix_notification_logs_channel_id"), "notification_logs", ["channel_id"], unique=False)
+        op.create_index(op.f("ix_notification_logs_alert_id"), "notification_logs", ["alert_id"], unique=False)
+        op.create_index(op.f("ix_notification_logs_job_offer_id"), "notification_logs", ["job_offer_id"], unique=False)
 
     if not _table_exists("scraper_runs"):
         op.create_table(
             "scraper_runs",
             sa.Column("id", sa.Integer(), nullable=False),
-            sa.Column("query", sa.String(), nullable=False),
+            sa.Column("source", sa.String(), nullable=False),
             sa.Column("status", sa.String(), nullable=False),
             sa.Column("started_at", sa.DateTime(), nullable=True),
             sa.Column("finished_at", sa.DateTime(), nullable=True),
             sa.Column("offers_found", sa.Integer(), nullable=True),
-            sa.Column("new_offers", sa.Integer(), nullable=True),
-            sa.Column("new_matches", sa.Integer(), nullable=True),
             sa.Column("error_message", sa.Text(), nullable=True),
             sa.PrimaryKeyConstraint("id"),
         )

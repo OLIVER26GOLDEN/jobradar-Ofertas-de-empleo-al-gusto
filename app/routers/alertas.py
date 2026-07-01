@@ -15,7 +15,7 @@ def read_alertas(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
-    return db.query(models.Alerta).all()
+    return db.query(models.Alerta).filter(models.Alerta.user_id == current_user.id).all()
 
 @router.post("/", response_model=schemas.Alerta, status_code=status.HTTP_201_CREATED)
 def create_alerta(
@@ -23,7 +23,7 @@ def create_alerta(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
-    db_alerta = models.Alerta(**alerta.model_dump())
+    db_alerta = models.Alerta(**alerta.model_dump(), user_id=current_user.id)
     db.add(db_alerta)
     db.commit()
     db.refresh(db_alerta)
@@ -35,7 +35,11 @@ def delete_alerta(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
-    db_alerta = db.query(models.Alerta).filter(models.Alerta.id == alerta_id).first()
+    db_alerta = (
+        db.query(models.Alerta)
+        .filter(models.Alerta.id == alerta_id, models.Alerta.user_id == current_user.id)
+        .first()
+    )
     if not db_alerta:
         raise HTTPException(status_code=404, detail="Alerta no encontrada")
     db.delete(db_alerta)
