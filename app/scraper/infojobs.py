@@ -1,134 +1,167 @@
-import os
-import requests
 import base64
-from typing import List, Dict, Any
+import os
+from dataclasses import dataclass
+from typing import Any
 
-# Infojobs API URL
+import requests
+
+
 INFOJOBS_API_URL = "https://api.infojobs.net/api/7/offer"
+INFOJOBS_SOURCE = "InfoJobs"
 
-def fetch_infojobs_offers(query: str = "python", limit: int = 10) -> List[Dict[str, Any]]:
-    """
-    Consigue ofertas de la API de InfoJobs usando las credenciales en .env.
-    Si no hay credenciales, devuelve datos simulados de forma limpia para desarrollo y pruebas.
-    """
-    client_id = os.getenv("INFOJOBS_CLIENT_ID")
-    client_secret = os.getenv("INFOJOBS_CLIENT_SECRET")
 
-    # Si falta alguna de las credenciales, usamos datos de mock realistas
-    if not client_id or not client_secret or client_id == "tu_client_id":
-        return get_mock_infojobs_offers(query, limit)
+@dataclass(frozen=True)
+class InfoJobsConfig:
+    client_id: str | None
+    client_secret: str | None
+    redirect_uri: str | None
 
-    # Autenticación Básica requerida por InfoJobs: Basic base64(client_id:client_secret)
-    credential_str = f"{client_id}:{client_secret}"
-    encoded_credentials = base64.b64encode(credential_str.encode("utf-8")).decode("utf-8")
-    
-    headers = {
+    @property
+    def has_credentials(self) -> bool:
+        return bool(self.client_id and self.client_secret)
+
+
+def get_infojobs_config() -> InfoJobsConfig:
+    return InfoJobsConfig(
+        client_id=os.getenv("INFOJOBS_CLIENT_ID") or None,
+        client_secret=os.getenv("INFOJOBS_CLIENT_SECRET") or None,
+        redirect_uri=os.getenv("INFOJOBS_REDIRECT_URI") or None,
+    )
+
+
+def build_auth_headers(config: InfoJobsConfig) -> dict[str, str]:
+    if not config.client_id or not config.client_secret:
+        return {}
+
+    credentials = f"{config.client_id}:{config.client_secret}"
+    encoded_credentials = base64.b64encode(credentials.encode("utf-8")).decode("utf-8")
+    return {
         "Authorization": f"Basic {encoded_credentials}",
-        "Content-Type": "application/json"
-    }
-    
-    params = {
-        "q": query,
-        "maxResults": limit
+        "Content-Type": "application/json",
     }
 
-    try:
-        response = requests.get(INFOJOBS_API_URL, headers=headers, params=params, timeout=10)
-        if response.status_code == 200:
-            data = response.json()
-            offers_raw = data.get("items", [])
-            
-            parsed_offers = []
-            for item in offers_raw:
-                # Estructura típica de respuesta de InfoJobs API
-                titulo = item.get("title", "Sin título")
-                empresa = item.get("author", {}).get("name", "Empresa Confidencial")
-                ubicacion = item.get("city", "España")
-                
-                # Modalidad de teletrabajo si está disponible
-                teleworking = item.get("teleworking", {})
-                modalidad = teleworking.get("name", "No especificado") if teleworking else "No especificado"
-                
-                # Salario
-                salario = item.get("salaryDescription", "No especificado")
-                
-                # Enlace directo
-                enlace = item.get("link", "")
-                
-                # Fecha
-                fecha_pub = item.get("published", None)
-                
-                # Descripción mínima o detalles
-                descripcion = item.get("requirementMin", "Sin descripción detallada.")
 
-                parsed_offers.append({
-                    "titulo": titulo,
-                    "empresa": empresa,
-                    "ubicacion": ubicacion,
-                    "modalidad": modalidad,
-                    "salario": salario,
-                    "descripcion": descripcion,
-                    "enlace": enlace,
-                    "fuente": "InfoJobs",
-                    "estado": "guardado",
-                    "fecha_publicacion": fecha_pub
-                })
-            return parsed_offers
-        else:
-            print(f"Error calling InfoJobs API: {response.status_code} - {response.text}")
-            return get_mock_infojobs_offers(query, limit)
-    except Exception as e:
-        print(f"Exception connecting to InfoJobs: {e}")
-        return get_mock_infojobs_offers(query, limit)
+def normalize_infojobs_offer(item: dict[str, Any], source: str = INFOJOBS_SOURCE) -> dict[str, Any]:
+    teleworking = item.get("teleworking") or {}
+    author = item.get("author") or {}
 
-def get_mock_infojobs_offers(query: str, limit: int) -> List[Dict[str, Any]]:
-    """
-    Devuelve ofertas mockeadas para simular la API de InfoJobs.
-    """
+    return {
+        "titulo": item.get("title") or "Sin titulo",
+        "empresa": author.get("name") or "Empresa confidencial",
+        "ubicacion": item.get("city") or item.get("province", {}).get("value") or "Espana",
+        "modalidad": teleworking.get("name") or "No especificado",
+        "salario": item.get("salaryDescription") or "No especificado",
+        "descripcion": item.get("requirementMin") or "Sin descripcion detallada.",
+        "enlace": item.get("link") or item.get("url") or "",
+        "fuente": source,
+        "estado": "guardado",
+        "fecha_publicacion": item.get("published"),
+    }
+
+
+def get_mock_infojobs_offers(
+    keyword: str = "python",
+    provincia: str | None = None,
+    modalidad: str | None = None,
+    fuente: str = INFOJOBS_SOURCE,
+    limit: int = 10,
+) -> list[dict[str, Any]]:
     mock_data = [
         {
             "titulo": "Desarrollador Python Junior",
             "empresa": "TechMadrid Solutions",
             "ubicacion": "Madrid",
-            "modalidad": "Híbrido",
-            "salario": "24.000€ - 28.000€ Bruto/Año",
-            "descripcion": "Buscamos un perfil junior con ganas de aprender y mejorar en Python y FastAPI.",
+            "modalidad": "Hibrido",
+            "salario": "24000 - 28000 EUR bruto/anio",
+            "descripcion": "Perfil junior con Python, FastAPI y ganas de aprender.",
             "enlace": "https://www.infojobs.net/madrid/desarrollador-python-junior/of-i12345",
-            "fuente": "InfoJobs",
+            "fuente": fuente,
             "estado": "guardado",
-            "fecha_publicacion": "2026-06-25T10:00:00Z"
+            "fecha_publicacion": "2026-06-25T10:00:00Z",
         },
         {
-            "titulo": "Python Backend Developer (FastAPI)",
-            "empresa": "Global Software S.L.",
+            "titulo": "Python Backend Developer",
+            "empresa": "Global Software SL",
             "ubicacion": "Barcelona",
             "modalidad": "Remoto",
-            "salario": "40.000€ - 45.000€ Bruto/Año",
-            "descripcion": "Únete a nuestro equipo de backend de alto rendimiento construyendo APIs eficientes en Python.",
+            "salario": "40000 - 45000 EUR bruto/anio",
+            "descripcion": "Construccion de APIs eficientes en Python para producto SaaS.",
             "enlace": "https://www.infojobs.net/barcelona/python-backend-developer/of-i67890",
-            "fuente": "InfoJobs",
+            "fuente": fuente,
             "estado": "guardado",
-            "fecha_publicacion": "2026-06-26T14:30:00Z"
+            "fecha_publicacion": "2026-06-26T14:30:00Z",
         },
         {
-            "titulo": "Fullstack Developer (Python/React)",
+            "titulo": "Fullstack Developer Python React",
             "empresa": "Fintech Innova",
             "ubicacion": "Valencia",
             "modalidad": "Presencial",
-            "salario": "30.000€ - 35.000€ Bruto/Año",
-            "descripcion": "Desarrollo completo de aplicaciones fintech. Stack: Django/FastAPI y React.",
+            "salario": "30000 - 35000 EUR bruto/anio",
+            "descripcion": "Desarrollo fintech con FastAPI, Django y React.",
             "enlace": "https://www.infojobs.net/valencia/fullstack-developer/of-i11121",
-            "fuente": "InfoJobs",
+            "fuente": fuente,
             "estado": "guardado",
-            "fecha_publicacion": "2026-06-27T08:15:00Z"
-        }
+            "fecha_publicacion": "2026-06-27T08:15:00Z",
+        },
     ]
-    # Filtrar según la keyword
-    filtered = [o for o in mock_data if query.lower() in o["titulo"].lower() or query.lower() in o["descripcion"].lower()]
-    # Si la keyword no coincide con ninguno, devolvemos todo igual pero adaptando los títulos
-    if not filtered:
-        filtered = mock_data
-        for o in filtered:
-            o["titulo"] = f"{o['titulo']} ({query})"
-            
+
+    keyword_value = (keyword or "").strip().lower()
+    provincia_value = (provincia or "").strip().lower()
+    modalidad_value = (modalidad or "").strip().lower()
+
+    filtered = []
+    for offer in mock_data:
+        searchable = f"{offer['titulo']} {offer['descripcion']}".lower()
+        if keyword_value and keyword_value not in searchable:
+            continue
+        if provincia_value and provincia_value not in offer["ubicacion"].lower():
+            continue
+        if modalidad_value and modalidad_value not in offer["modalidad"].lower():
+            continue
+        filtered.append(offer)
+
+    if not filtered and keyword_value:
+        filtered = [{**mock_data[0], "titulo": f"Oferta mock para {keyword}"}]
+
     return filtered[:limit]
+
+
+def search_infojobs_offers(
+    keyword: str = "python",
+    provincia: str | None = None,
+    modalidad: str | None = None,
+    fuente: str = INFOJOBS_SOURCE,
+    limit: int = 10,
+) -> list[dict[str, Any]]:
+    config = get_infojobs_config()
+    if not config.has_credentials:
+        return get_mock_infojobs_offers(keyword, provincia, modalidad, fuente, limit)
+
+    params: dict[str, Any] = {
+        "q": keyword,
+        "maxResults": limit,
+    }
+    if provincia:
+        params["province"] = provincia
+    if modalidad:
+        params["teleworking"] = modalidad
+
+    try:
+        response = requests.get(
+            INFOJOBS_API_URL,
+            headers=build_auth_headers(config),
+            params=params,
+            timeout=10,
+        )
+        response.raise_for_status()
+    except requests.RequestException:
+        return get_mock_infojobs_offers(keyword, provincia, modalidad, fuente, limit)
+
+    data = response.json()
+    items = data.get("items", [])
+    offers = [normalize_infojobs_offer(item, source=fuente) for item in items]
+    return [offer for offer in offers if offer["enlace"]][:limit]
+
+
+def fetch_infojobs_offers(query: str = "python", limit: int = 10) -> list[dict[str, Any]]:
+    return search_infojobs_offers(keyword=query, limit=limit)

@@ -147,6 +147,7 @@ DATABASE_URL=sqlite:///./jobradar.db
 # Infojobs API → https://developer.infojobs.net
 INFOJOBS_CLIENT_ID=tu_client_id
 INFOJOBS_CLIENT_SECRET=tu_client_secret
+INFOJOBS_REDIRECT_URI=http://localhost:8000/auth/infojobs/callback
 
 # Telegram Bot → @BotFather
 TELEGRAM_BOT_TOKEN=tu_token
@@ -155,6 +156,10 @@ TELEGRAM_CHAT_ID=tu_chat_id
 # Scheduler
 SCRAPER_INTERVAL_HOURS=6
 ```
+
+InfoJobs esta preparado para integrarse con credenciales reales mas adelante.
+Mientras `INFOJOBS_CLIENT_ID` o `INFOJOBS_CLIENT_SECRET` esten vacios, JobRadar usa datos mock minimos para desarrollo y tests, sin llamar a la API externa.
+`INFOJOBS_REDIRECT_URI` queda documentado para el flujo OAuth futuro, pero actualmente no se usa para autenticar usuarios ni para obtener tokens reales.
 
 ### 4️⃣ Arranca el servidor
 
